@@ -3,3 +3,4 @@
 - [2025-12-22 10:38] feat: implemented basic lexer token definitions
 - [2025-12-23 19:26] fix: resolved regex issue in tokenizer
 - [2025-12-24 09:20] test: added unit tests for integer tokens
+- [2025-12-25 14:53] feat: completed lexer module
