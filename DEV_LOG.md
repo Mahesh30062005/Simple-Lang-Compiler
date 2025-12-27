@@ -5,3 +5,4 @@
 - [2025-12-24 09:20] test: added unit tests for integer tokens
 - [2025-12-25 14:53] feat: completed lexer module
 - [2025-12-26 21:35] started parser skeleton code
+- [2025-12-27 22:00] defined AST node structures
