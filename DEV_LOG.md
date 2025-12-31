@@ -9,3 +9,4 @@
 - [2025-12-28 22:31] implemented recursive descent for expressions
 - [2025-12-29 16:53] fix: parser precedence bug for multiplication
 - [2025-12-30 15:08]  optimized AST memory allocation
+- [2025-12-31 21:26] documented parser logic for future reference
