@@ -12,3 +12,4 @@
 - [2025-12-31 21:26] documented parser logic for future reference
 - [2026-01-01 23:51] started code generator backend
 - [2026-01-02 23:45] added support for basic arithmetic ops
+- [2026-01-03 12:41] test case formation: integrated end-to-end compiler tests
