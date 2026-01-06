@@ -3,22 +3,29 @@
 
 using namespace std;
 
-Parser::Parser(vector<Token> tokens) {
-    this->tokens = tokens;
-    this->pos = 0;
+// Constructor: Tokens receive karke position reset karte hain
+Parser::Parser(vector<Token> t) {
+    tokens = t;
+    currentPos = 0;
 }
 
+// Helper: Current token return karta hai.
+// Safety check: Agar end of file (EOF) cross ho gaya toh last token hi return karo.
 Token Parser::peek() {
-    if (pos >= tokens.size()) return tokens.back(); // Return EOF if OOB
-    return tokens[pos];
+    if (currentPos >= tokens.size()) return tokens.back(); 
+    return tokens[currentPos];
 }
 
+// Helper: Aage badhne ke liye. 
+// Pehle increment karte hain, fir purana wala return karte hain (standard logic).
 Token Parser::advance() {
-    if (pos < tokens.size()) pos++;
-    return tokens[pos - 1];
+    if (currentPos < tokens.size()) currentPos++;
+    return tokens[currentPos - 1];
 }
 
+// Helper: Match and advance logic
 bool Parser::match(TokenType type) {
+    // Agar current token expected type ka hai, toh usse kha jao (advance)
     if (peek().type == type) {
         advance();
         return true;
@@ -26,91 +33,114 @@ bool Parser::match(TokenType type) {
     return false;
 }
 
+// Helper: Strict Validation
+// Agar expected token nahi mila toh program yahin phat jayega (Error print karke exit).
 Token Parser::consume(TokenType type, string errorMsg) {
     if (peek().type == type) return advance();
-    cerr << "Parser Error: " << errorMsg << " at " << peek().value << endl;
+    
+    // Error logging nicely
+    cerr << "[Parser Error] " << errorMsg << " | Found: " << peek().value << endl;
     exit(1);
 }
 
-// ---------------------------------------------------------
-// Top Level: Parse the whole file
-// ---------------------------------------------------------
+
+// Main Function: Pura Program Parse Karo
+
 Program* Parser::parseProgram() {
-    Program* program = new Program();
+    Program* prog = new Program();
+    
+    // Jab tak file khatam nahi hoti (EOF), tab tak statements parse karte raho
     while (peek().type != TOK_EOF) {
-        program->statements.push_back(parseStatement());
+        prog->statements.push_back(parseStatement());
     }
-    return program;
+    return prog;
 }
 
-// ---------------------------------------------------------
-// Statements: Declarations, Assignments, Ifs
-// ---------------------------------------------------------
+
+// Statement Logic: Decide karo kya karna hai (Decl, If, Assign)
+
 Statement* Parser::parseStatement() {
-    // 1. Variable Declaration: "int a;"
+    
+    // 1. Variable Declaration Logic (e.g., "int a;")
+    // Agar 'int' keyword dikha, matlab naya variable ban raha hai.
     if (match(TOK_INT)) {
-        Token id = consume(TOK_ID, "Expected variable name after 'int'");
-        consume(TOK_SEMICOLON, "Expected ';' after variable declaration");
-        return new VarDecl(id.value);
+        Token varName = consume(TOK_ID, "Variable ka naam missing hai 'int' ke baad.");
+        consume(TOK_SEMICOLON, "Line end karne ke liye ';' lagana bhul gaye.");
+        return new VarDecl(varName.value);
     }
 
-    // 2. If Statement: "if (expr) { ... }"
+    // 2. If Condition Logic (e.g., "if (a == b) { ... }")
     if (match(TOK_IF)) {
-        consume(TOK_LPAREN, "Expected '(' after 'if'");
-        Expression* condition = parseExpression();
-        consume(TOK_RPAREN, "Expected ')' after condition");
+        consume(TOK_LPAREN, "'if' ke baad '(' missing hai.");
+        Expression* condition = parseExpression(); // Condition check karo
+        consume(TOK_RPAREN, "Condition ke baad ')' lagana padega.");
         
-        consume(TOK_LBRACE, "Expected '{' to start if-block");
-        vector<Statement*> body;
+        consume(TOK_LBRACE, "Block start karne ke liye '{' chahiye.");
+        
+        vector<Statement*> bodyStatements;
+        // Jab tak closing brace '}' ya EOF nahi milta, body parse karte raho
         while (peek().type != TOK_RBRACE && peek().type != TOK_EOF) {
-            body.push_back(parseStatement());
+            bodyStatements.push_back(parseStatement());
         }
-        consume(TOK_RBRACE, "Expected '}' to end if-block");
         
-        return new IfStmt(condition, body);
+        consume(TOK_RBRACE, "Block close karne ke liye '}' missing hai.");
+        
+        return new IfStmt(condition, bodyStatements);
     }
 
-    // 3. Assignment: "a = 5;"
-    // Check if it starts with an identifier (variable name)
+    // 3. Assignment Logic (e.g., "a = 10;")
+    // Agar koi variable name (ID) dikha start mein, toh probably assignment hai.
     if (peek().type == TOK_ID) {
-        Token id = advance(); // Eat the variable name
-        consume(TOK_ASSIGN, "Expected '=' after variable name");
-        Expression* value = parseExpression();
-        consume(TOK_SEMICOLON, "Expected ';' after assignment");
-        return new Assignment(id.value, value);
+        Token varName = advance(); // Variable name save karlo
+        
+        // Ab expect kar rahe hain ki '=' aayega
+        consume(TOK_ASSIGN, "Variable ke baad '=' expect kiya tha.");
+        
+        Expression* value = parseExpression(); // Right side solve karo
+        
+        consume(TOK_SEMICOLON, "Assignment ke baad ';' missing hai.");
+        return new Assignment(varName.value, value);
     }
 
-    cerr << "Parser Error: Unexpected token " << peek().value << endl;
+    // Agar kuch bhi samajh nahi aaya toh error throw karo
+    cerr << "[Parser Error] Unexpected token: " << peek().value << endl;
     exit(1);
 }
 
-// ---------------------------------------------------------
-// Expressions: Math logic (Left + Right)
-// ---------------------------------------------------------
-Expression* Parser::parseExpression() {
-    // Parse the left side first (e.g., "5")
-    Expression* left = parseTerm();
 
-    // While we see "+" or "-", keep building the tree
+// Expression Parsing: Maths handle karta hai (Recursive)
+
+Expression* Parser::parseExpression() {
+    // Left side parse karo (Term)
+    Expression* leftExpr = parseTerm();
+
+    // Ab check karo ki aage koi operator (+, -, ==) hai kya.
+    // Jab tak operators mil rahe hain, tree build karte jao.
     while (peek().type == TOK_PLUS || peek().type == TOK_MINUS || peek().type == TOK_EQ) {
-        string op = advance().value; // Eat the operator
-        Expression* right = parseTerm(); // Parse the right side
-        // Combine them: (OldLeft + Right)
-        left = new BinaryOp(left, op, right);
+        string op = advance().value; // Operator utha lo
+        Expression* rightExpr = parseTerm(); // Right side parse karo
+        
+        // Purane left aur naye right ko milake naya BinaryOp node banao
+        leftExpr = new BinaryOp(leftExpr, op, rightExpr);
     }
 
-    return left;
+    return leftExpr;
 }
 
-// Term: A single unit (Number or Variable)
+// Term Parsing: Basic Numbers ya Variables
+
 Expression* Parser::parseTerm() {
+    // Agar number hai (e.g., 50)
     if (peek().type == TOK_NUM) {
         return new Number(stoi(advance().value));
     }
+    
+    // Agar variable hai (e.g., 'a')
     if (peek().type == TOK_ID) {
         return new Variable(advance().value);
     }
     
-    cerr << "Parser Error: Expected Number or Variable, got " << peek().value << endl;
+    // Agar yahan pahuche matlab syntax galat hai
+    cerr << "[Parser Error] Number ya Variable expect kiya tha, but mila: " << peek().value << endl;
     exit(1);
 }
