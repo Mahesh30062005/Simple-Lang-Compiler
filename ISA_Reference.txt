@@ -1,0 +1,13 @@
+Mnemonic	Opcode         	Description             C++ / SimpleLang Logic
+
+
+NOP	        0000	        No Operation	        Do nothing
+LDA	        0001	        Load Accumulator	    acc = memory[arg]
+ADD	        0010	        Add to Accumulator	    acc = acc + memory[arg]
+SUB	        0011	        Subtract from Acc	    acc = acc - memory[arg]
+STA	        0100	        Store Accumulator	    memory[arg] = acc
+LDI	        0101	        Load Immediate	        acc = constant_value
+JMP	        0110	        Jump (Unconditional)	goto label
+JZ	        0111	        Jump if Zero	        if (acc == 0) goto label
+OUT	        1110	        Output	                print(acc)
+HLT	        1111	        Halt	                exit()
